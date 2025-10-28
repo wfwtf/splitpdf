@@ -26,13 +26,18 @@ function padnum {
     echo $n
 }
 
-if [[ $# -ne 1 || "$@" == "-h" || "$@" == "--help" ]] ; then
-    echo "Usage: splitpdf <infile.pdf>."
-    echo ""
-    echo "Splits original file into single page files named"
-    echo "as <infile_p#.pdf> where # is the page number."
-    exit 1
-fi
+# Check for help
+for arg in "$@"; do
+	case "$arg" in
+		-h|--help)
+			echo "Usage: splitpdf <infile.pdf>..."
+			echo ""
+			echo "Splits original file into single page files named"
+			echo "as <infile_page#.pdf> where # is the page number."
+			exit 0
+			;;
+	esac
+done
 
 infile="$1"
 if [[ ! -f "$infile" ]] ; then
