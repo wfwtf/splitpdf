@@ -4,70 +4,74 @@
 
 # Returns number of pages in a PDF file
 function numpages {
-    filename="$1"
-    gs -q -dNOSAFER -dNODISPLAY -c "($filename) (r) file runpdfbegin pdfpagecount = quit"
+        filename="$1"
+        gs -q -dNOSAFER -dNODISPLAY -c "($filename) (r) file runpdfbegin pdfpagecount = quit"
 }
 
 # Returns the number of digits in an integer
 function ndigits {
-    num="$1"
-    echo "$num" | awk '{print(int(log($0)/log(10))+1);}'
+        num="$1"
+        echo "$num" | awk '{print(int(log($0)/log(10))+1);}'
 }
 
 # Pads number according to the number of 0's needed.
 function padnum {
-    n=$1
-    maxn=$2
-    ndigits=$(ndigits $n)
-    maxndigits=$(ndigits $maxn)
-    for((i=1;i<=(maxndigits-ndigits);i=i+1)); do
-        printf 0
-    done
-    echo $n
+        n=$1
+        maxn=$2
+        ndigits=$(ndigits $n)
+        maxndigits=$(ndigits $maxn)
+        for((i=1;i<=(maxndigits-ndigits);i=i+1)); do
+        	printf 0
+        done
+        echo $n
 }
 
-# Check for help
-for arg in "$@"; do
-	case "$arg" in
-		-h|--help)
-			echo "Usage: splitpdf <infile.pdf>..."
-			echo ""
-			echo "Splits original file into single page files named"
-			echo "as <infile_page#.pdf> where # is the page number."
-			exit 0
-			;;
-	esac
-done
+# Main loop over PDF files
+function main {
+	local infile="$1"
+	echo "Processing file '$infile'."
+	if [[ ! -f "$infile" ]] ; then
+		echo "Error: file $infile does not exist."
+		exit 1
+	fi
 
-infile="$1"
-if [[ ! -f "$infile" ]] ; then
-    echo "Error: file $infile does not exist"
-    exit 1
+	firstpage=1
+	local lastpage=$(numpages "$infile")
+	# Check if PDF has only one page
+	if [ "$lastpage" -eq "$firstpage" ]; then
+		echo "Info: file '$infile' contains only one page."
+		return 0
+	fi
+	local base="${infile##*/}"
+	local base="${base%.[Pp][Dd][Ff]}"
+	local dir="$(dirname "$infile")"
+	local ext="${infile##*.}"
+
+	for((i=$firstpage;i<=lastpage;i=i+1)); do
+	        printf "Extracting Page $i"'\r';
+	        gs -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -dSAFER \
+	           -dFirstPage=$i \
+	           -dLastPage=$i \
+	           -sOutputFile="${dir}/${base}_page$(padnum $i $lastpage).${ext}" \
+	           "$infile" &> /dev/null
+	        if [[ $? -ne 0 ]] ; then
+	    		echo "Error extracting page $i."
+	        fi
+	done
+	# Clear line command
+	printf '\033[K'
+	echo "done"
+}
+
+# main execution
+if [[ "$@" == "-h" || "$@" == "--help" ]] ; then
+        echo "Usage: splitpdf <infile.pdf>."
+        echo ""
+        echo "Splits original file into single page files named"
+        echo "as <infile_p#.pdf> where # is the page number."
+        exit 1
 fi
 
-firstpage=1
-lastpage=$(numpages $1)
-# Check if PDF has only one page
-if [ "$lastpage" -eq 1 ]; then
-    echo "PDF file contains only one page"
-    exit 0
-fi
-base="${infile##*/}"
-base="${base%.[Pp][Dd][Ff]}"
-dir="$(dirname "$infile")"
-ext="${infile##*.}"
-
-for((i=$firstpage;i<=lastpage;i=i+1)); do
-    printf "Extracting Page $i"'\r';
-    gs -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -dSAFER \
-       -dFirstPage=$i \
-       -dLastPage=$i \
-       -sOutputFile="${dir}/${base}_page$(padnum $i $lastpage).${ext}" \
-       "$infile" &> /dev/null
-    if [[ $? -ne 0 ]] ; then
-        echo "Error extracting page $i"
-    fi
+for file in "$@"; do
+	main "$file"
 done
-# Clear line command
-printf '\033[K'
-echo "done"
