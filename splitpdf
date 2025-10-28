@@ -42,20 +42,22 @@ fi
 
 firstpage=1
 lastpage=$(numpages $1)
-basename=$(basename "$infile" .pdf)
-
 # Check if PDF has only one page
 if [ "$lastpage" -eq 1 ]; then
     echo "PDF file contains only one page"
     exit 0
 fi
+base="${infile##*/}"
+base="${base%.[Pp][Dd][Ff]}"
+dir="$(dirname "$infile")"
+ext="${infile##*.}"
 
 for((i=$firstpage;i<=lastpage;i=i+1)); do
     printf "Extracting Page $i"'\r';
     gs -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -dSAFER \
        -dFirstPage=$i \
        -dLastPage=$i \
-       -sOutputFile="${basename}_page$(padnum $i $lastpage).pdf" \
+       -sOutputFile="${dir}/${base}_page$(padnum $i $lastpage).${ext}" \
        "$infile" &> /dev/null
     if [[ $? -ne 0 ]] ; then
         echo "Error extracting page $i"
