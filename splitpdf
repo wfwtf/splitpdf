@@ -46,7 +46,7 @@ if [[ ! -f "$infile" ]] ; then
 fi
 
 firstpage=1
-lastpage=$(numpages $1)
+lastpage=$(numpages "$infile")
 # Check if PDF has only one page
 if [ "$lastpage" -eq 1 ]; then
     echo "PDF file contains only one page"
