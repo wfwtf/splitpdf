@@ -1,6 +1,6 @@
 #!/bin/bash
-# This script splits a PDF file into its constituent pages, one file
-# per page.
+# This script splits one or more PDF files into their constituent pages,
+# one file per page.
 
 # Returns number of pages in a PDF file
 function numpages {
@@ -26,6 +26,43 @@ function padnum {
     echo $n
 }
 
+# Main loop for each PDF file
+function main {
+	local infile="$1"
+	if [[ ! -f "$infile" ]] ; then
+	    echo "Error: file $infile does not exist"
+	    return 1
+	fi
+
+	local firstpage=1
+	local lastpage=$(numpages "$infile")
+	# Check if PDF has only one page
+	if [ "$lastpage" -eq 1 ]; then
+	    echo "File $infile contains only one page"
+	    return 0
+	fi
+	local base="${infile##*/}"
+	local base="${base%.[Pp][Dd][Ff]}"
+	local dir="$(dirname "$infile")"
+	local ext="${infile##*.}"
+
+	for((i=$firstpage;i<=lastpage;i=i+1)); do
+	    printf "File $infile: Extracting Page $i"'\r';
+
+	    gs -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -dSAFER \
+	       -dFirstPage=$i \
+	       -dLastPage=$i \
+	       -sOutputFile="${dir}/${base}_page$(padnum $i $lastpage).${ext}" \
+	       "$infile" &> /dev/null
+	    if [[ $? -ne 0 ]] ; then
+		echo "File $infile: Error extracting page $i"
+	    fi
+	done
+	# Clear line command
+	printf '\033[K\n'
+	echo "File $infile: done"
+}
+
 # Check for help
 for arg in "$@"; do
 	case "$arg" in
@@ -39,35 +76,8 @@ for arg in "$@"; do
 	esac
 done
 
-infile="$1"
-if [[ ! -f "$infile" ]] ; then
-    echo "Error: file $infile does not exist"
-    exit 1
-fi
-
-firstpage=1
-lastpage=$(numpages "$infile")
-# Check if PDF has only one page
-if [ "$lastpage" -eq 1 ]; then
-    echo "PDF file contains only one page"
-    exit 0
-fi
-base="${infile##*/}"
-base="${base%.[Pp][Dd][Ff]}"
-dir="$(dirname "$infile")"
-ext="${infile##*.}"
-
-for((i=$firstpage;i<=lastpage;i=i+1)); do
-    printf "Extracting Page $i"'\r';
-    gs -sDEVICE=pdfwrite -dNOPAUSE -dBATCH -dSAFER \
-       -dFirstPage=$i \
-       -dLastPage=$i \
-       -sOutputFile="${dir}/${base}_page$(padnum $i $lastpage).${ext}" \
-       "$infile" &> /dev/null
-    if [[ $? -ne 0 ]] ; then
-        echo "Error extracting page $i"
-    fi
+# Call main function for all passed filenames
+for file in "$@"; do
+        main "$file"
 done
-# Clear line command
-printf '\033[K'
-echo "done"
+
