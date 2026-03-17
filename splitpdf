@@ -29,11 +29,11 @@ function padnum {
 # Main loop for each PDF file
 function main {
 	local infile="$1"
-	echo "Processing file '$infile'."
 	if [[ ! -f "$infile" ]] ; then
 		echo "Error: file $infile does not exist."
 		return 1
 	fi
+	echo "Processing file '$infile'."
 
 	local firstpage=1
 	local lastpage=$(numpages "$infile")
